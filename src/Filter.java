@@ -45,8 +45,8 @@ public class Filter {
     private static final HashMap<String, Filter> FILTERS = new HashMap();
     
     static {
-        FILTERS.put("in progress", new Filter(ANSI_GREEN + "#@!" + ANSI_RESET, true));
-        FILTERS.put("todo", new Filter(ANSI_BLUE + "#@!" + ANSI_RESET, true));
+        FILTERS.put("in progress", new Filter(ANSI_BLUE + "#@!" + ANSI_RESET, true));
+        FILTERS.put("todo", new Filter(ANSI_GREEN + "#@!" + ANSI_RESET, true));
         FILTERS.put("done", new Filter(ANSI_YELLOW + "#@!" + ANSI_RESET, true));
         FILTERS.put("none", new Filter(ANSI_CYAN + "#@!" + ANSI_RESET, false));
     }
