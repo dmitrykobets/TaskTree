@@ -85,19 +85,20 @@ public class Main {
             Integer target = null;
             
             String line = in.nextLine().trim();
+            System.out.println(ANSI_RED + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" + ANSI_RESET);
             if (line.isEmpty()) continue;
             String[] toks = line.toLowerCase().split("\\s+");
             
             if (toks[0].startsWith("/")) {
                 if (toks[0].startsWith("//")) {
                     if (line.length() > 2) {
-                        search(line.substring(2), true);
+                        search(line.substring(2), false);
                     } else {
                         searchResults.clear();
                         searchStr = "";
                     }
                 } else if (line.length() > 1) {
-                    search(line.substring(1), false);
+                    search(line.substring(1), true);
                 } else {
                     searchResults.clear();
                     searchStr = "";
