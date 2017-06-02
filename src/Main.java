@@ -556,8 +556,6 @@ public class Main {
         folder.delete();
     }
     
-    
-    
     public void editSelected() {
         if (selected == null) return;
         
