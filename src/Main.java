@@ -116,6 +116,7 @@ public class Main {
                 }
                 else if ((target = parseInt(toks[0])) != null){
                     select(target);
+                    if (selected != null) bringBranchToBottom(selected);
                 } else if (toks[0].equals("new") && !secondarySelection) {
                     makeNew(in);
                 } else if (toks[0].equals("clear") || toks[0].equals("clr")) {
@@ -222,6 +223,10 @@ public class Main {
         container.add(container.size() - 1, container.get(i));
         container.remove(i);
     }
+    public <T> void moveToLast(ArrayList<T> container, T item) {
+        container.remove(item);
+        container.add(item);
+    }
     public <T> void moveToLast(ArrayList<T> container, int i) {
         container.add(container.get(i));
         container.remove(i);
@@ -267,6 +272,7 @@ public class Main {
     
     public void parseComboMovement(char[] chars) {
         String num = "";
+        Item toBringToBottom = null;
         for (int i = 0; i < chars.length; i ++) {
             if (Character.isDigit(chars[i])) {
                 num += chars[i];
@@ -276,7 +282,14 @@ public class Main {
                     navigate(chars[i]);
                 }
                 num = "";
+                
+                if (chars[i] == 'k' || chars[0] == 'j') {
+                    toBringToBottom = getSelected();
+                }
             }
+        }
+        if (toBringToBottom != null) {
+            bringBranchToBottom(toBringToBottom);
         }
     }
     
@@ -360,13 +373,12 @@ public class Main {
         } else {
             selected = item;
         }
-        // bring selected tree to the bottom of the screen
-        if (item != null) {
-            Item head = item;
-            while (!head.isHead()) head = head.getParent();
-            heads.remove(head);
-            heads.add(head);
-        }
+    }
+    
+    public void bringBranchToBottom(Item item) {
+        Item head = item;
+        while (!head.isHead()) head = head.getParent();
+        moveToLast(heads, head);
     }
     
     public void navigate(char c) {
