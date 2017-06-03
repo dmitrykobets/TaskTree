@@ -40,6 +40,7 @@ public class Item {
     public void setStatus(Meta.Status status) {
         this.meta.status = status;
     }
+    
     public boolean isWorking() {
         return this.meta.status == Meta.Status.WORKING;
     }
@@ -56,6 +57,11 @@ public class Item {
     public ArrayList<Item> getChildren() {
         return this.children;
     }
+    
+    public void setChildren(ArrayList<Item> children) {
+        this.children = children;
+    }
+    
     public Item getParent() {
         return this.parent;
     }

@@ -162,6 +162,8 @@ public class Main {
                     move();
                 } else if ((toks[0].equals("open") || toks[0].equals("folder")) && !secondarySelection) {
                     openFolder();
+                } else if ((toks[0].equals("sort")) && !secondarySelection) {
+                    sort(null);
                 }
             } else if (toks.length == 2) {
                 if ((toks[0].equals("vw")) && !secondarySelection) {
@@ -212,6 +214,10 @@ public class Main {
         }
     }
     
+    public <T> void moveToSecondLast(ArrayList<T> container, T item) {
+        container.add(container.size() - 1, item);
+        container.remove(item);
+    }
     public <T> void moveToSecondLast(ArrayList<T> container, int i) {
         container.add(container.size() - 1, container.get(i));
         container.remove(i);
@@ -934,6 +940,7 @@ public class Main {
                 }
             }
         }
+        sort(null);
     }
     
     public Item parseItem(File folder, int week) {
@@ -1110,6 +1117,52 @@ public class Main {
             writer.close();
         } catch (FileNotFoundException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public void sort(Item head) {
+        ArrayList<Item> sorted = new ArrayList();
+        
+        // Order: none, done, todo, working
+        int lastNone = -1;
+        int lastDone = -1;
+        int lastTodo = -1;
+        int lastWorking = -1;
+        for (Item item: (head == null ? heads : head.getChildren())) {
+            sort(item);
+            if (head == null && item == heads.get(heads.size() - 1) && selected != null) {
+                sorted.add(item);
+                break;
+            }
+            switch(item.getStatus()) {
+                case NONE:
+                    sorted.add(lastNone + 1, item);
+                    break;
+                case DONE:
+                    sorted.add(lastDone + 1, item);
+                    break;
+                case TODO:
+                    sorted.add(lastTodo + 1, item);
+                    break;
+                case WORKING:
+                    sorted.add(lastWorking + 1, item);
+                    break;
+            }
+            switch(item.getStatus()) {
+                case NONE:
+                    lastNone ++;
+                case DONE:
+                    lastDone ++;
+                case TODO:
+                    lastTodo ++;
+                case WORKING:
+                    lastWorking ++;
+            }
+        }
+        if (head == null) {
+            heads = new ArrayList(sorted);
+        } else {
+            head.setChildren(new ArrayList(sorted));
         }
     }
 }
