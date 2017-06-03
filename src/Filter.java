@@ -48,7 +48,7 @@ public class Filter {
         FILTERS.put("in progress", new Filter(ANSI_BLUE + "#@!" + ANSI_RESET, true));
         FILTERS.put("todo", new Filter(ANSI_GREEN + "#@!" + ANSI_RESET, true));
         FILTERS.put("done", new Filter(ANSI_YELLOW + "#@!" + ANSI_RESET, true));
-        FILTERS.put("none", new Filter(ANSI_WHITE + "#@!" + ANSI_WHITE, true));
+        FILTERS.put("none", new Filter(ANSI_WHITE + "#@!" + ANSI_RESET, true));
     }
     
     public static String applyFilters(Item item, String target) {
