@@ -717,17 +717,9 @@ public class Main {
         } else {
             Item newItem = parseItem(newFolder, currentWeek);
         
-            if (selected.isDone()) {
-                newItem.setStatus(Meta.Status.DONE);
-                writeMeta(newPath, newItem.getMeta(), false);
-            } else if (selected.isWorking() && selected.isLeaf()) {
-                newItem.setStatus(Meta.Status.WORKING);
-                writeMeta(newPath, newItem.getMeta(), false);
-            } else if (selected.isTodo()) {
-                newItem.setStatus(Meta.Status.TODO);
-                writeMeta(newPath, newItem.getMeta(), false);
-            }
-
+            newItem.setStatus(selected.getStatus());
+            writeMeta(newPath, newItem.getMeta(), false);
+            
             // link
             if (!selected.isHead()) {
                 selected.getParent().getChildren().add(newItem);
