@@ -255,8 +255,8 @@ public class Main {
     
     public void printList(String filter) {
         System.out.println(ANSI_RED + "Items matching '" + filter + "':" + ANSI_RESET);
-        for (Item head: heads) {
-            printListRecur(head, Meta.getStatusFromString(filter), head.getName());
+        for (Item item: (getSelected() == null ? heads : getSelected().getChildren())) {
+            printListRecur(item, Meta.getStatusFromString(filter), item.getName());
         }
         waitForInput();
     }
