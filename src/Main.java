@@ -809,9 +809,9 @@ public class Main {
         int count = 0;
         for (Item head: heads) {
             printStructure(head, count ++, 0);
+            System.out.println("");
         }
         if (!heads.isEmpty()) {
-            System.out.println();
             System.out.println();
         }
     }
