@@ -33,4 +33,6 @@ public class Meta {
     public void setDefaults() {
         this.status = DEFAULT_STATUS;
     }
+    
+    public int priority = 0;
 }

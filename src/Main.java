@@ -159,7 +159,7 @@ public class Main {
                     selectTop();
                 } else if (toks[0].matches("^[hjkl0-9]+$")) {
                     parseComboMovement(toks[0].toCharArray());
-                } else if (toks[0].equals("move") || toks[0].equals("mv")) {
+                } else if (toks[0].equals("mv") || toks[0].equals("move")) {
                     move();
                 } else if ((toks[0].equals("open") || toks[0].equals("folder")) && !secondarySelection) {
                     openFolder();
@@ -868,7 +868,7 @@ public class Main {
         }
     }
     
-    public Meta getMeta(File metaFolder) {
+    public Meta loadMeta(File metaFolder) {
         Meta meta = new Meta();
 
         File metaFile = new File(metaFolder.getPath() + "/week.txt");
@@ -883,6 +883,13 @@ public class Main {
                     String key = parts[0].trim();
                     if (key.equals("status")) {
                         meta.status = Meta.getStatusFromString(parts[1]);
+                    } else if (key.equals("priority")) {
+                        Integer priorityNum = parseInt(parts[1]);
+                        if (priorityNum == null || priorityNum < 0) {
+                            System.out.println("Invalid value for attribute: 'priority' in file: " + metaFile.getPath());
+                        } else {
+                            meta.priority = priorityNum;
+                        }
                     }
                 }
                 if (meta.status == null) {
@@ -956,7 +963,7 @@ public class Main {
         
         for (File content: contents) {
             if (!content.isFile() && content.getName().equals(META_PATH.substring(0, META_PATH.length() - 1))) {
-                meta = getMeta(content);
+                meta = loadMeta(content);
             } else if (!content.isFile()) {
                 Item child = parseItem(content, week);
                 if (child != null) {
@@ -1127,11 +1134,13 @@ public class Main {
     public void sort(Item head) {
         ArrayList<Item> sorted = new ArrayList();
         
+        ArrayList<Item> none = new ArrayList();
+        ArrayList<Item> done = new ArrayList();
+        ArrayList<Item> todo = new ArrayList();
+        ArrayList<Item> working = new ArrayList();
+        
+        
         // Order: none, done, todo, working
-        int lastNone = -1;
-        int lastDone = -1;
-        int lastTodo = -1;
-        int lastWorking = -1;
         for (Item item: (head == null ? heads : head.getChildren())) {
             sort(item);
             if (head == null && item == heads.get(heads.size() - 1) && selected != null) {
@@ -1140,33 +1149,43 @@ public class Main {
             }
             switch(item.getStatus()) {
                 case NONE:
-                    sorted.add(lastNone + 1, item);
+                    none.add(item);
                     break;
                 case DONE:
-                    sorted.add(lastDone + 1, item);
+                    done.add(item);
                     break;
                 case TODO:
-                    sorted.add(lastTodo + 1, item);
+                    todo.add(item);
                     break;
                 case WORKING:
-                    sorted.add(lastWorking + 1, item);
+                    working.add(item);
                     break;
-            }
-            switch(item.getStatus()) {
-                case NONE:
-                    lastNone ++;
-                case DONE:
-                    lastDone ++;
-                case TODO:
-                    lastTodo ++;
-                case WORKING:
-                    lastWorking ++;
             }
         }
+        
+        sortByPriority(none);
+        sortByPriority(done);
+        sortByPriority(todo);
+        sortByPriority(working);
+        
+        sorted.addAll(none);
+        sorted.addAll(done);
+        sorted.addAll(todo);
+        sorted.addAll(working);
+        
         if (head == null) {
             heads = new ArrayList(sorted);
         } else {
             head.setChildren(new ArrayList(sorted));
         }
+    }
+    
+    public void sortByPriority(ArrayList<Item> items) {
+        items.stream().sorted((a, b) -> comparePriority(a, b));
+    }
+    private int comparePriority(Item a, Item b) {
+        if (a.getPriority() < b.getPriority()) return 1;
+        if (a.getPriority() == b.getPriority()) return 0;
+        return -1;
     }
 }

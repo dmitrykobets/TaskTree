@@ -100,4 +100,8 @@ public class Item {
         
         return false;
     }
+    
+    public int getPriority() {
+        return this.meta.priority;
+    }
 }
