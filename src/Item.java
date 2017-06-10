@@ -104,4 +104,7 @@ public class Item {
     public int getPriority() {
         return this.meta.priority;
     }
+    public void setPriority(int priority) {
+        this.meta.priority = priority;
+    }
 }

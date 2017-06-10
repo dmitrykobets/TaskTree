@@ -8,10 +8,13 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
 
 /*
@@ -34,6 +37,8 @@ public class Main {
     Item selected = null;
     Item secondarySelected = null;
     boolean secondarySelection = false;
+    boolean isPriority = false;
+    int originalPriorityIndex = 0;
     
     String searchStr = "";
     HashMap<Item, Integer> searchResults = new HashMap();
@@ -115,8 +120,12 @@ public class Main {
                     }
                 }
                 else if ((target = parseInt(toks[0])) != null){
-                    select(target);
-                    if (selected != null) bringBranchToBottom(selected);
+                    if (isPriority) {
+                        selectPriority(target);
+                    } else {
+                        select(target);
+                        bringBranchToBottom(selected);
+                    }
                 } else if (toks[0].equals("new") && !secondarySelection) {
                     makeNew(in);
                 } else if (toks[0].equals("clear") || toks[0].equals("clr")) {
@@ -165,6 +174,8 @@ public class Main {
                     openFolder();
                 } else if ((toks[0].equals("sort")) && !secondarySelection) {
                     sort(null);
+                } else if (toks[0].equals("rr") || toks[0].equals("rearrange") || toks[0].equals("p") || toks[0].equals("priority")) {
+                    togglePriorityMode();
                 }
             } else if (toks.length == 2) {
                 if ((toks[0].equals("vw")) && !secondarySelection) {
@@ -188,6 +199,64 @@ public class Main {
                 }
             }
         } while (true);
+    }
+    
+    
+    public void togglePriorityMode() {
+        if (selected == null || secondarySelection || currentWeek != viewWeek) return;
+        if (this.isPriority) {
+            if (originalPriorityIndex != getCurIdx()) {
+                recalculatePriorities();
+                writePriorities();
+            }
+        } else {
+            sort(selected.getParent());
+            originalPriorityIndex = getCurIdx();
+        }
+        this.isPriority = !this.isPriority;
+    }
+    
+    public void writePriorities() {
+        for (Item item: selected.isHead() ? heads : selected.getParent().getChildren()) {
+            writeMeta(item.getPath(getWeekPrepath(currentWeek)), item.getMeta(), false);
+        }
+    }
+    
+    public void recalculatePriorities() {
+        ArrayList<Item> container = selected.isHead() ? heads : selected.getParent().getChildren();
+        int curIdx = getCurIdx();
+        
+        int adjust = 0;
+        if (curIdx == 0) {
+            if (container.get(curIdx + 1).getPriority() == 0) {
+                selected.setPriority(0);
+                adjust = 1;
+            } else {
+                selected.setPriority(container.get(curIdx + 1).getPriority() - 1);
+            }
+        } else {
+            selected.setPriority(container.get(curIdx - 1).getPriority() + 1);
+            adjust = 2;
+        }
+        if (adjust == 0) return;
+        
+        boolean recalibrate = selected.getPriority() >= 1000;
+        for (int i = curIdx + 1; i < container.size(); ++ i) {
+            container.get(i).setPriority(container.get(i).getPriority() + 2);
+            if (container.get(i).getPriority() >= 1000) recalibrate = true;
+        }
+        
+        if (recalibrate) {
+            for (int i = 1; i < container.size(); ++ i) {
+                int diff = container.get(i).getPriority() - container.get(i - 1).getPriority();
+                if (diff > 1) {
+                    -- diff;
+                    for (int j = i; j < container.size(); ++ j) {
+                        container.get(j).setPriority(container.get(j).getPriority() - diff);
+                    }
+                }
+            }
+        }
     }
     
     public void search(String str, boolean all) {
@@ -376,19 +445,62 @@ public class Main {
     }
     
     public void bringBranchToBottom(Item item) {
+        if (item == null) return;
         Item head = item;
         while (!head.isHead()) head = head.getParent();
         moveToLast(heads, head);
     }
     
+    public void navigatePriority(char c) {
+        if (selected == null || secondarySelection || currentWeek != viewWeek) return;
+
+        ArrayList<Item> collection = selected.isHead() ? heads : selected.getParent().getChildren();
+        int curIdx = getCurIdx();
+        int movement = 0;
+        boolean rotate = false;
+        if (c == 'k') {
+            movement = -1;
+            if (curIdx == 0) {
+                rotate = true;
+            }
+        } else {
+            movement = 1;
+            if (curIdx == collection.size() - 1) {
+                rotate = true;
+            }
+        }
+        
+        if (!rotate) {
+            if (collection.get(curIdx).getStatus() == collection.get(curIdx + movement).getStatus()) {
+                Collections.swap(collection, curIdx, curIdx + movement);
+            }
+        } else {
+            if (collection.get(collection.size() - 1).getStatus() == collection.get(0).getStatus()) {
+                collection.remove(curIdx);
+                if (movement == 1) {
+                    collection.add(0, selected);
+                } else {
+                    collection.add(selected);
+                }
+            }
+        }
+    }
+    
     public void navigate(char c) {
+        if (this.isPriority) {
+            if (c == 'k' || c == 'j') {
+                navigatePriority(c);
+            }
+            return;
+        }
         switch (c) {
             case 'j':
                 if (getSelected() == null) {
-                    select(0); 
+                    select(0);
                 } else {
                     select(getCurIdx() + 1);
                 }
+                bringBranchToBottom(selected);
                 break;
             case 'k':
                 if (getSelected() == null) {
@@ -396,6 +508,7 @@ public class Main {
                 } else {
                     select(getCurIdx() - 1);
                 }
+                bringBranchToBottom(selected);
                 break;
             case 'l':
                 if (getSelected() == null) {
@@ -776,6 +889,17 @@ public class Main {
         }
     }
     
+    public void selectPriority(int idx) {
+        if (selected == null || secondarySelection || currentWeek != viewWeek) return;
+        
+        ArrayList<Item> collection = selected.isHead() ? heads : selected.getParent().getChildren();
+        int curIdx = getCurIdx();
+        if (collection.get(curIdx).getStatus()== collection.get(idx).getStatus()) {
+            collection.remove(curIdx);
+            collection.add(idx, selected);
+        }
+    }
+    
     public boolean select(int idx) {
         if (idx < 0) return false;
         
@@ -928,6 +1052,10 @@ public class Main {
             PrintWriter writer = new PrintWriter(metaFile);
             String line = "status: " + (meta == null ? Meta.DEFAULT_STATUS : meta.status);
             writer.println(line.toLowerCase());
+            if (meta != null) {
+                line = "priority: " + meta.priority;
+                writer.println(line);
+            }
             writer.close();
         } catch (FileNotFoundException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -1132,6 +1260,7 @@ public class Main {
     }
     
     public void sort(Item head) {
+        if (head != null && head.isLeaf()) return;
         ArrayList<Item> sorted = new ArrayList();
         
         ArrayList<Item> none = new ArrayList();
@@ -1139,12 +1268,13 @@ public class Main {
         ArrayList<Item> todo = new ArrayList();
         ArrayList<Item> working = new ArrayList();
         
-        
+        Item selectedHead = null;
         // Order: none, done, todo, working
         for (Item item: (head == null ? heads : head.getChildren())) {
             sort(item);
+            // if this is the last item in 'heads' and a selection is made, then the selection is part of this tree
             if (head == null && item == heads.get(heads.size() - 1) && selected != null) {
-                sorted.add(item);
+                selectedHead = item;
                 break;
             }
             switch(item.getStatus()) {
@@ -1163,15 +1293,19 @@ public class Main {
             }
         }
         
-        sortByPriority(none);
-        sortByPriority(done);
-        sortByPriority(todo);
-        sortByPriority(working);
+        none = new ArrayList(sortByPriority(none));
+        done = new ArrayList(sortByPriority(done));
+        todo = new ArrayList(sortByPriority(todo));
+        working = new ArrayList(sortByPriority(working));
         
         sorted.addAll(none);
         sorted.addAll(done);
         sorted.addAll(todo);
         sorted.addAll(working);
+        
+        if (selectedHead != null) {
+            sorted.add(selectedHead);
+        }
         
         if (head == null) {
             heads = new ArrayList(sorted);
@@ -1180,12 +1314,12 @@ public class Main {
         }
     }
     
-    public void sortByPriority(ArrayList<Item> items) {
-        items.stream().sorted((a, b) -> comparePriority(a, b));
+    public List<Item> sortByPriority(ArrayList<Item> items) {
+        return items.stream().sorted((a, b) -> comparePriority(a, b)).collect(Collectors.toList());
     }
     private int comparePriority(Item a, Item b) {
-        if (a.getPriority() < b.getPriority()) return 1;
+        if (a.getPriority() < b.getPriority()) return -1;
         if (a.getPriority() == b.getPriority()) return 0;
-        return -1;
+        return 1;
     }
 }
