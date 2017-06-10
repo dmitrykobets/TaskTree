@@ -1220,7 +1220,7 @@ public class Main {
             }
             if (!weekIntegerRead || weekInteger == null || weekInteger < 0) {
                 if (!weekIntegerRead) {
-                    System.out.println("Missing attribute: 'status' in file: " + weekFile.getPath());
+                    System.out.println("Missing attribute: 'week' in file: " + weekFile.getPath());
                 } else if (weekInteger == null) {
                     System.out.println("Week not a number in file: " + weekFile.getPath());
                 } else {
