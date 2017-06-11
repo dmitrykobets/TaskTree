@@ -10,7 +10,7 @@
  */
 public class Meta {
     public static enum Status {
-        NONE, WORKING, DONE, TODO;
+        NONE, DONE, TODO, WORKING
     };
     public static Status DEFAULT_STATUS = Status.NONE;
     

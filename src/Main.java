@@ -225,6 +225,25 @@ public class Main {
     public void recalculatePriorities() {
         ArrayList<Item> container = selected.isHead() ? heads : selected.getParent().getChildren();
         int curIdx = getCurIdx();
+        boolean inGroup = false;
+        while (!inGroup) {
+            Meta.Status upStatus = curIdx == container.size() - 1 ? null : container.get(curIdx + 1).getStatus();
+            if (upStatus != selected.getStatus()) {
+                Meta.Status downStatus = curIdx == 0 ? null : container.get(curIdx - 1).getStatus();
+                if (downStatus != selected.getStatus()) {
+                    int downDir = downStatus == null ? 1 : selected.getStatus().ordinal() - downStatus.ordinal();
+                    int upDir = upStatus == null ? -1 : selected.getStatus().ordinal() - upStatus.ordinal();
+                    if (downDir != upDir) inGroup = true;
+                    else {
+                        cycle(container, curIdx, upDir);
+                    }
+                } else {
+                    inGroup = true;
+                }
+            } else {
+                inGroup = true;
+            }
+        }
         
         int adjust = 0;
         if (curIdx == 0) {
@@ -256,6 +275,19 @@ public class Main {
                     }
                 }
             }
+        }
+    }
+    
+    public <T> void cycle(ArrayList<T> container, int i, int dir) {
+        T t = container.get(i);
+        if (dir == 1 && i == container.size() - 1) {
+            container.remove(i);
+            container.add(0, t);
+        } else if (dir == -1 && i == 0) {
+            container.remove(i);
+            container.add(t);
+        } else {
+            Collections.swap(container, i, i + dir);
         }
     }
     
@@ -457,33 +489,13 @@ public class Main {
         ArrayList<Item> collection = selected.isHead() ? heads : selected.getParent().getChildren();
         int curIdx = getCurIdx();
         int movement = 0;
-        boolean rotate = false;
         if (c == 'k') {
             movement = -1;
-            if (curIdx == 0) {
-                rotate = true;
-            }
         } else {
             movement = 1;
-            if (curIdx == collection.size() - 1) {
-                rotate = true;
-            }
         }
         
-        if (!rotate) {
-            if (collection.get(curIdx).getStatus() == collection.get(curIdx + movement).getStatus()) {
-                Collections.swap(collection, curIdx, curIdx + movement);
-            }
-        } else {
-            if (collection.get(collection.size() - 1).getStatus() == collection.get(0).getStatus()) {
-                collection.remove(curIdx);
-                if (movement == 1) {
-                    collection.add(0, selected);
-                } else {
-                    collection.add(selected);
-                }
-            }
-        }
+        cycle(collection, curIdx, movement);
     }
     
     public void navigate(char c) {
@@ -894,10 +906,8 @@ public class Main {
         
         ArrayList<Item> collection = selected.isHead() ? heads : selected.getParent().getChildren();
         int curIdx = getCurIdx();
-        if (collection.get(curIdx).getStatus()== collection.get(idx).getStatus()) {
-            collection.remove(curIdx);
-            collection.add(idx, selected);
-        }
+        collection.remove(curIdx);
+        collection.add(idx, selected);
     }
     
     public boolean select(int idx) {
