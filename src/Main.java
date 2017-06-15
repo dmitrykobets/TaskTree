@@ -293,7 +293,7 @@ public class Main {
     
     public void search(String str, boolean all) {
         searchResults.clear();
-        searchStr = str;
+        searchStr = str.toLowerCase();
         
         for (int i = heads.size() - 1; i >= 0; -- i) {
             if ((all && searchRecur(heads.get(i), str)) || (!all && matchesSearch(heads.get(i).getName(), str))) {
@@ -346,12 +346,12 @@ public class Main {
     }
     
     public void addToSearchResults(Item item, String match) {
-        int start = item.getName().indexOf(match);
+        int start = item.getName().toLowerCase().indexOf(match.toLowerCase());
         searchResults.put(item, start);
     }
     
     public boolean matchesSearch(String str, String search) {
-        return str.contains(search);
+        return str.toLowerCase().contains(search.toLowerCase());
     }
     
     public void printList(String filter) {
