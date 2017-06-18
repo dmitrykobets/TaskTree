@@ -3,7 +3,9 @@ import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -16,6 +18,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
+import org.joda.time.DateTime;
+import org.joda.time.Period;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.PeriodFormat;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -34,11 +41,14 @@ public class Main {
     final String META_PATH = "_meta/";
     
     ArrayList<Item> heads = new ArrayList();
+    ArrayList<Task> tasks = new ArrayList();
     Item selected = null;
     Item secondarySelected = null;
     boolean secondarySelection = false;
     boolean isPriority = false;
+    boolean timeMode = false;
     int originalPriorityIndex = 0;
+    int numRunning = 0;
     
     String searchStr = "";
     HashMap<Item, Integer> searchResults = new HashMap();
@@ -74,6 +84,10 @@ public class Main {
     public static void main(String[] args) {
         Main main = new Main();
         main.run();
+    }
+    
+    public void runO() {
+        
     }
     
     public void run() {
@@ -131,13 +145,13 @@ public class Main {
                 } else if (toks[0].equals("clear") || toks[0].equals("clr")) {
                     setSelected(null);
                 } else if (toks[0].equals("l")) {
-                    navigate('l');
+                    navigate('l', false);
                 } else if (toks[0].equals("h")) {
-                    navigate('h');
+                    navigate('h', false);
                 } else if (toks[0].equals("k")) {
-                    navigate('k');
+                    navigate('k', false);
                 } else if (toks[0].equals("j")) {
-                    navigate('j');
+                    navigate('j', false);
                 } else if ((toks[0].equals("edit") || toks[0].equals("notes") || toks[0].equals("note")) && !secondarySelection) {
                     editSelected();
                 } else if ((toks[0].equals("status") || toks[0].equals("s") || toks[0].equals("stat")) && !secondarySelection) {
@@ -176,6 +190,16 @@ public class Main {
                     sort(null);
                 } else if (toks[0].equals("rr") || toks[0].equals("rearrange") || toks[0].equals("p") || toks[0].equals("priority")) {
                     togglePriorityMode();
+                } else if (toks[0].equals("time")) {
+                    toggleTimeMode();
+                } else if (toks[0].equals("start")) {
+                    promptTimeTask(true);
+                } else if (toks[0].equals("stop")) {
+                    promptTimeTask(false);
+                } else if (toks[0].equals("tasks")) {
+                    loadTasks();
+                    printTasks();
+                    waitForInput();
                 }
             } else if (toks.length == 2) {
                 if ((toks[0].equals("vw")) && !secondarySelection) {
@@ -201,6 +225,169 @@ public class Main {
         } while (true);
     }
     
+    public void printTasks() {
+        System.out.print("Existing tasks: [");
+        
+        int i = 0;
+        for (Task task: tasks) {
+            if (task.isInProgress()) {
+                System.out.print(Filter.ANSI_BLUE + task.getName() + ANSI_RESET);
+            } else {
+                System.out.print(task.getName());
+            }
+            if (i ++ < tasks.size() - 1) {
+                System.out.print(", ");
+            }
+        }
+        System.out.println("]");
+    }
+    
+    public void promptTimeTask(boolean start) {
+        loadTasks();
+        printTasks();
+        
+        Scanner in = new Scanner(System.in);
+        System.out.print("Name:\n>> ");
+        String name = in.nextLine();
+        Task correspondingTask = tasks.stream().filter(t -> t.getName().equals(name)).findFirst().orElse(null);
+        if (correspondingTask == null && !start) return; // can't stop a non-existent task
+        if (correspondingTask != null && !correspondingTask.isInProgress() && !start) return; // can't stop an already stopped task
+        if (correspondingTask != null && correspondingTask.isInProgress() && start) return; // can't start an already started task
+        
+        File timeFile = new File(getWeekPrepath(viewWeek) + "_tasks/" + name + ".txt");
+        boolean isNewFile = !timeFile.exists();
+        if (!timeFile.exists()) {
+            try {
+                timeFile.createNewFile();
+            } catch (IOException ex) {
+                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        ArrayList<String> lines = new ArrayList();
+        try (BufferedReader br = new BufferedReader(new FileReader(timeFile))) {
+            String line = "";
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+            DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
+            
+            DateTime now = formatter.parseDateTime(new DateTime().toString(formatter));
+            PrintWriter writer = null;
+            if (start && (lines.isEmpty() || lines.get(lines.size() - 1).startsWith("e:"))) {
+                writer = new PrintWriter(new FileOutputStream(timeFile, true));
+                writer.println(("s:") + formatter.print(now));
+            } else if (!start && !lines.isEmpty() && lines.get(lines.size() - 1).startsWith("s:")) {
+                DateTime lastTime = formatter.parseDateTime(lines.get(lines.size() - 1).substring(2));
+                if (lastTime.isEqual(now)) {
+                    writer = new PrintWriter(new FileWriter(timeFile));
+                    lines.remove(lines.size() - 1);
+                    for (String str: lines) {
+                        writer.println(str);
+                    }
+                } else {
+                    writer = new PrintWriter(new FileOutputStream(timeFile, true));
+                    writer.println(("e:") + formatter.print(now));
+                }
+            }
+            if (writer != null) {
+                writer.close();
+            } 
+            
+        } catch (Exception e) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
+        }
+        
+        if (lines.isEmpty() && !isNewFile) {
+            System.out.println("deleting: " + timeFile.getAbsolutePath());
+            waitForInput();
+            timeFile.delete();
+        }
+    }
+    
+    public void loadTasks() {
+        tasks.clear();
+        File timeFolder = new File(getWeekPrepath(viewWeek) + "_tasks/");
+        if (!timeFolder.exists()) {
+            timeFolder.mkdir();
+            return;
+        }
+        
+        
+        File[] files = timeFolder.listFiles();
+        for (File file: files) {
+            String name = file.getName().substring(0, file.getName().length() - ".txt".length());
+            
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                String line;
+                boolean inProgress = false;
+                String startStr = "";
+                Period duration = null;
+                DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
+                while ((line = br.readLine()) != null) {
+                    if (line.startsWith("s:")) {
+                        inProgress = true;
+                        startStr = line.substring(2);
+                    } else {
+                        inProgress = false;
+                        DateTime start = formatter.parseDateTime(startStr);
+                        DateTime end = formatter.parseDateTime(line.substring(2));
+                        if (duration == null) duration = new Period(start, end);
+                        else duration.plus(new Period(start, end));
+                    }
+                }
+                tasks.add(new Task(name, duration, inProgress));
+                
+            } catch (Exception e) {
+                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
+            }
+        }
+    }
+    
+    public void toggleTimeMode() {
+        if (secondarySelection) return;
+        selected = null;
+        timeMode = !timeMode;
+        if (timeMode) {
+            parseTimes();
+        }
+    }
+    public void parseTimes() {
+        for (Item head: heads) {
+            parseTime(head);
+        }
+    }
+    public void parseTime(Item item) {
+        if (item.isLeaf()) {
+            File timeFile = new File(item.getPath(getWeekPrepath(currentWeek)) + META_PATH + "time.txt");
+            if (!timeFile.exists()) {
+                item.setTime(null);
+            } else {
+                try (BufferedReader br = new BufferedReader(new FileReader(timeFile))) {
+                    String line;
+                    String startStr = "";
+                    Period duration = null;
+                    DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
+                    while ((line = br.readLine()) != null) {
+                        if (line.startsWith("s:")) {
+                            startStr = line.substring(2);
+                        } else {
+                            DateTime start = formatter.parseDateTime(startStr);
+                            DateTime end = formatter.parseDateTime(line.substring(2));
+                            if (duration == null) duration = new Period(start, end);
+                            else duration.plus(new Period(start, end));
+                        }
+                    }
+                    item.setTime(duration);
+                } catch (Exception e) {
+                    Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
+                }
+            }
+        } else {
+            for (Item child: item.getChildren()) {
+                parseTime(child);
+            }
+        }
+    }
     
     public void togglePriorityMode() {
         if (selected == null || secondarySelection || currentWeek != viewWeek) return;
@@ -380,7 +567,7 @@ public class Main {
             } else {
                 int n = num.isEmpty() ? 1 : Integer.parseInt(num);
                 for (int j = 0; j < n; j ++) {
-                    navigate(chars[i]);
+                    navigate(chars[i], true);
                 }
                 num = "";
                 
@@ -498,7 +685,7 @@ public class Main {
         cycle(collection, curIdx, movement);
     }
     
-    public void navigate(char c) {
+    public void navigate(char c, boolean combo) {
         if (this.isPriority) {
             if (c == 'k' || c == 'j') {
                 navigatePriority(c);
@@ -512,7 +699,8 @@ public class Main {
                 } else {
                     select(getCurIdx() + 1);
                 }
-                bringBranchToBottom(selected);
+                if (!combo)
+                    bringBranchToBottom(selected);
                 break;
             case 'k':
                 if (getSelected() == null) {
@@ -520,7 +708,8 @@ public class Main {
                 } else {
                     select(getCurIdx() - 1);
                 }
-                bringBranchToBottom(selected);
+                if (!combo)
+                    bringBranchToBottom(selected);
                 break;
             case 'l':
                 if (getSelected() == null) {
@@ -945,8 +1134,25 @@ public class Main {
             printStructure(head, count ++, 0);
             System.out.println("");
         }
+        if (timeMode) {
+            printTaskTimes();
+        }
         if (!heads.isEmpty()) {
             System.out.println();
+        }
+    }
+    
+    public void printTaskTimes() {
+        loadTasks();
+        for (Task task: tasks) {
+            if (task.isInProgress()) {
+                System.out.print(Filter.ANSI_BLUE + task.getName() + Filter.ANSI_RESET);
+            } else {
+                System.out.print(task.getName());
+            }
+            if (task.getTime() != null) {
+                System.out.println(" -- " + Filter.ANSI_CYAN_BACKGROUND + PeriodFormat.getDefault().print(task.getTime()) + Filter.ANSI_RESET);
+            }
         }
     }
     
@@ -962,8 +1168,6 @@ public class Main {
         
         String nameStr = item.getName();
         int nameLength = nameStr.length();
-        
-        
         
         if (searchResults.containsKey(item)) {
             nameStr = Filter.applyFilters(item, nameStr.substring(0, searchResults.get(item))) +
@@ -985,6 +1189,16 @@ public class Main {
             nameStr += format + "*" + ANSI_RESET;
             nameStr = format + "*" + ANSI_RESET + nameStr;
             nameLength += 2;
+        }
+        
+        if (timeMode && item.getTime() != null) {
+            nameStr += " -- ";
+            nameLength += " -- ".length();
+            String timeStr = PeriodFormat.getDefault().print(item.getTime());
+            nameLength += timeStr.length();
+            timeStr = Filter.ANSI_CYAN_BACKGROUND + timeStr + Filter.ANSI_RESET;
+            nameStr += timeStr;
+            
         }
         
         String pre = count + ". ";
@@ -1055,7 +1269,7 @@ public class Main {
                 try {
                     metaFile.createNewFile();
                 } catch (IOException ex) {
-                    System.out.println("Error creating file: meta.txt for item path: " + path);
+                    System.out.println("Error creating file: week.txt for item path: " + path);
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
@@ -1080,7 +1294,7 @@ public class Main {
         File[] contents = folder.listFiles();
         
         for (File content: contents) {
-            if (!content.isFile()) {
+            if (!content.isFile() && !content.getName().equals("_tasks")) {
                 Item newItem = parseItem(content, week);
                 if (newItem == null) {
                     return;
@@ -1141,11 +1355,70 @@ public class Main {
         }
     }
     
+    public void writeTimer(Item item, boolean start) {
+        if (start) numRunning ++;
+        else numRunning --;
+        parseTime(item);
+        File timeFile = new File(item.getPath(getWeekPrepath(currentWeek)) + META_PATH + "time.txt");
+        if (!timeFile.exists()) {
+            try {
+                timeFile.createNewFile();
+            } catch (IOException ex) {
+                System.out.println("Could not create time file: " + timeFile.getPath());
+                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(timeFile))) {
+            ArrayList<String> lines = new ArrayList();
+            String line = "";
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+            DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
+            
+            DateTime now = formatter.parseDateTime(new DateTime().toString(formatter));
+            PrintWriter writer = null;
+            if (start && (lines.isEmpty() || lines.get(lines.size() - 1).startsWith("e:"))) {
+                writer = new PrintWriter(new FileOutputStream(timeFile, true));
+                writer.println(("s:") + formatter.print(now));
+            } else if (!start && !lines.isEmpty() && lines.get(lines.size() - 1).startsWith("s:")) {
+                DateTime lastTime = formatter.parseDateTime(lines.get(lines.size() - 1).substring(2));
+                if (lastTime.isEqual(now)) {
+                    writer = new PrintWriter(new FileWriter(timeFile));
+                    lines.remove(lines.size() - 1);
+                    for (String str: lines) {
+                        writer.println(str);
+                    }
+                } else {
+                    writer = new PrintWriter(new FileOutputStream(timeFile, true));
+                    writer.println(("e:") + formatter.print(now));
+                }
+            }
+            if (writer != null) {
+                writer.close();
+            }
+        } catch (Exception e) {
+            System.out.println("Error writing start time");
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+    
     public void updateStatus(Meta.Status status, Item item) {
+        if (status == Meta.Status.WORKING && !item.isWorking()) {
+            writeTimer(item, true);
+        } else if (status != Meta.Status.WORKING && item.isWorking()) {
+            writeTimer(item, false);
+        }
         updateStatusDown(status, item);
         updateStatusUp(item);
     }
     public void updateStatusDown(Meta.Status status, Item item) {
+        if (status == Meta.Status.WORKING && !item.isWorking()) {
+            writeTimer(item, true);
+        } else if (status != Meta.Status.WORKING && item.isWorking()) {
+            writeTimer(item, false);
+        }
         item.setStatus(status);
         writeMeta(item.getPath(getWeekPrepath(currentWeek)), item.getMeta(), false);
         for (Item child: item.getChildren()) {
@@ -1179,6 +1452,7 @@ public class Main {
         }
         
         if (item.getParent().getStatus() != originalStat) {
+            writeTimer(item.getParent(), item.getParent().getStatus() == Meta.Status.WORKING);
             writeMeta(item.getParent().getPath(getWeekPrepath(currentWeek)), item.getParent().getMeta(), false);
             updateStatusUp(item.getParent());
         }

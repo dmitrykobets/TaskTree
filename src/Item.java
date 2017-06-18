@@ -1,5 +1,7 @@
 
 import java.util.ArrayList;
+import org.joda.time.DateTime;
+import org.joda.time.Period;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -15,6 +17,8 @@ public class Item {
     private String name;
     
     private Meta meta;
+    
+    private Period duration;
     
     private ArrayList<Item> children;
     private Item parent = null;
@@ -106,5 +110,12 @@ public class Item {
     }
     public void setPriority(int priority) {
         this.meta.priority = priority;
+    }
+    
+    public void setTime(Period duration) {
+        this.duration = duration;
+    }
+    public Period getTime() {
+        return this.duration;
     }
 }
