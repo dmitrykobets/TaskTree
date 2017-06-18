@@ -332,7 +332,7 @@ public class Main {
                         DateTime start = formatter.parseDateTime(startStr);
                         DateTime end = formatter.parseDateTime(line.substring(2));
                         if (duration == null) duration = new Period(start, end);
-                        else duration.plus(new Period(start, end));
+                        else duration = duration.plus(new Period(start, end));
                     }
                 }
                 tasks.add(new Task(name, duration, inProgress));
@@ -374,7 +374,7 @@ public class Main {
                             DateTime start = formatter.parseDateTime(startStr);
                             DateTime end = formatter.parseDateTime(line.substring(2));
                             if (duration == null) duration = new Period(start, end);
-                            else duration.plus(new Period(start, end));
+                            else duration = duration.plus(new Period(start, end));
                         }
                     }
                     item.setTime(duration);
