@@ -500,6 +500,8 @@ public class Main {
         if (searchResults.isEmpty()) {
             System.out.println(ANSI_RED + "No search results." + ANSI_RESET);
             waitForInput();
+        } else {
+            setSelected(null);
         }
     }
     
