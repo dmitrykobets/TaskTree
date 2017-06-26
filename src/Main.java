@@ -36,7 +36,7 @@ import org.joda.time.format.PeriodFormat;
  */
 public class Main {
     
-    final String DATA_PATH = "./data/";
+    final String DATA_PATH = "./data-test/";
     final String CONFIG_PATH = "./config/";
     final String META_PATH = "_meta/";
     
@@ -53,48 +53,25 @@ public class Main {
     String searchStr = "";
     HashMap<Item, Integer> searchResults = new HashMap();
     
-    public static final String ANSI_BLACK_BACKGROUND = "\u001B[40m";
-    public static final String ANSI_RED_BACKGROUND = "\u001B[41m";
-    public static final String ANSI_GREEN_BACKGROUND = "\u001B[42m";
-    public static final String ANSI_YELLOW_BACKGROUND = "\u001B[43m";
-    public static final String ANSI_BLUE_BACKGROUND = "\u001B[44m";
-    public static final String ANSI_PURPLE_BACKGROUND = "\u001B[45m";
-    public static final String ANSI_CYAN_BACKGROUND = "\u001B[46m";
-    public static final String ANSI_WHITE_BACKGROUND = "\u001B[47m";
-    
-    public static final String ANSI_RESET = "\u001B[0m";
-    public static final String ANSI_BLACK = "\u001B[30m";
-    public static final String ANSI_RED = "\u001B[31m";
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_YELLOW = "\u001B[33m";
-    public static final String ANSI_BLUE = "\u001B[34m";
-    public static final String ANSI_PURPLE = "\u001B[35m";
-    public static final String ANSI_CYAN = "\u001B[36m";
-    public static final String ANSI_WHITE = "\u001B[37m";
-    
-    
-    public final String WORKING_FORMAT = ANSI_BLUE;
-    public final String DONE_FORMAT = ANSI_GREEN;
-    public final String TODO_FORMAT = ANSI_CYAN;
-    public final String NONE_FORMAT = ANSI_YELLOW;
-    
     int currentWeek = 0;
     int viewWeek = 0;
     
     public static void main(String[] args) {
         Main main = new Main();
-        main.run();
+        main.runO();
     }
     
     public void runO() {
-        
+        ColoredString str = new ColoredString("01234");
+        str.applyColor(ColoredString.RED, 0, 4);
+        str.applyColor(ColoredString.BLUE, 0, 2);
+        System.out.println(str);
     }
     
     public void run() {
         loadConfig();
         loadFiles(currentWeek);
         printWeek(false);
-        Filter.printFilters();
         
         Scanner in = new Scanner(System.in);
         do {
@@ -104,7 +81,7 @@ public class Main {
             Integer target = null;
             
             String line = in.nextLine().trim();
-            System.out.println(ANSI_RED + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" + ANSI_RESET);
+            System.out.println(ColoredString.RED + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" + ColoredString.ANSI_RESET);
             if (line.isEmpty()) continue;
             String[] toks = line.toLowerCase().split("\\s+");
             
@@ -162,14 +139,10 @@ public class Main {
                     } else if (toks[0].charAt(0) == 'l') {
                         selectDown(target);
                     }
-                } else if (toks[0].equals("filters")) {
-                    Filter.printFilters();
                 } else if (toks[0].equals("rm") && !secondarySelection) {
                     deletePrompt();
                 } else if (toks[0].equals("pre") && !secondarySelection) {
                     makeNewPre(in);
-                } else if (toks[0].equals("filter")) {
-                    Filter.filterPrompt();
                 } else if (toks[0].equals("vw") && !secondarySelection) {
                     Main.this.changeViewWeek(in);
                 } else if (toks[0].equals("week") || toks[0].equals("weeks")) {
@@ -231,7 +204,7 @@ public class Main {
         int i = 0;
         for (Task task: tasks) {
             if (task.isInProgress()) {
-                System.out.print(Filter.ANSI_BLUE + task.getName() + ANSI_RESET);
+                System.out.print(ColoredString.BLUE + task.getName() + ColoredString.ANSI_RESET);
             } else {
                 System.out.print(task.getName());
             }
@@ -498,7 +471,7 @@ public class Main {
         }
         
         if (searchResults.isEmpty()) {
-            System.out.println(ANSI_RED + "No search results." + ANSI_RESET);
+            System.out.println(ColoredString.RED + "No search results." + ColoredString.ANSI_RESET);
             waitForInput();
         } else {
             setSelected(null);
@@ -544,7 +517,7 @@ public class Main {
     }
     
     public void printList(String filter) {
-        System.out.println(ANSI_RED + "Items matching '" + filter + "':" + ANSI_RESET);
+        System.out.println(ColoredString.RED + "Items matching '" + filter + "':" + ColoredString.ANSI_RESET);
         for (Item item: (getSelected() == null ? heads : getSelected().getChildren())) {
             printListRecur(item, Meta.getStatusFromString(filter), item.getName());
         }
@@ -781,7 +754,7 @@ public class Main {
     }
     
     public static void waitForInput() {
-        System.out.println(ANSI_RED + "Type anything to continue" + ANSI_RESET);
+        System.out.println(ColoredString.RED + "Type anything to continue" + ColoredString.ANSI_RESET);
         Scanner in = new Scanner(System.in);
         in.nextLine();
     }
@@ -896,12 +869,12 @@ public class Main {
         File notes = new File(getPrimarySelectedPath() + "/" + META_PATH + "notes.txt");
         
         if (viewWeek != currentWeek) {
-            System.out.println(ANSI_RED + "Viewing archived notes: " + ANSI_RESET);
+            System.out.println(ColoredString.RED + "Viewing archived notes: " + ColoredString.ANSI_RESET);
         }
         
         if (!notes.exists()) {
             if (viewWeek != currentWeek) {
-                System.out.println(ANSI_RED + "Non-existent archive" + ANSI_RESET);
+                System.out.println(ColoredString.RED + "Non-existent archive" + ColoredString.ANSI_RESET);
                 return;
             }
             try {
@@ -922,7 +895,7 @@ public class Main {
             } catch (Exception e) {
                 System.out.println("Error reading file: " + notes.getPath());
             }
-            System.out.println(ANSI_RED + "//////////// END ///////////////" + ANSI_RESET);
+            System.out.println(ColoredString.RED + "//////////// END ///////////////" + ColoredString.ANSI_RESET);
         } else {
             try {
                 String cmd = "cmd.exe /c start \"\" \"" + notes.getAbsolutePath() + "\"";
@@ -1148,12 +1121,12 @@ public class Main {
         loadTasks();
         for (Task task: tasks) {
             if (task.isInProgress()) {
-                System.out.print(Filter.ANSI_BLUE + task.getName() + Filter.ANSI_RESET);
+                System.out.print(ColoredString.BLUE + task.getName() + ColoredString.ANSI_RESET);
             } else {
                 System.out.print(task.getName());
             }
             if (task.getTime() != null) {
-                System.out.println(" -- " + Filter.ANSI_CYAN_BACKGROUND + PeriodFormat.getDefault().print(task.getTime()) + Filter.ANSI_RESET);
+                System.out.println(" -- " + ColoredString.CYAN_BACKGROUND + PeriodFormat.getDefault().print(task.getTime()) + ColoredString.ANSI_RESET);
             }
         }
     }
@@ -1172,24 +1145,26 @@ public class Main {
         int nameLength = nameStr.length();
         
         if (searchResults.containsKey(item)) {
+            /*
             nameStr = Filter.applyFilters(item, nameStr.substring(0, searchResults.get(item))) +
-                    ANSI_PURPLE + nameStr.substring(searchResults.get(item), searchResults.get(item) + searchStr.length()) + ANSI_RESET + 
+                    ColoredString.PURPLE + nameStr.substring(searchResults.get(item), searchResults.get(item) + searchStr.length()) + ColoredString.ANSI_RESET + 
                     Filter.applyFilters(item, nameStr.substring(searchResults.get(item) + searchStr.length()));
-            nameStr = ANSI_PURPLE + "[" + ANSI_RESET + nameStr + ANSI_PURPLE + "]" + ANSI_RESET;
+*/
+            nameStr = ColoredString.PURPLE + "[" + ColoredString.ANSI_RESET + nameStr + ColoredString.PURPLE + "]" + ColoredString.ANSI_RESET;
             nameLength += 2;
         } else {
-            nameStr = Filter.applyFilters(item, nameStr);
+            //nameStr = Filter.applyFilters(item, nameStr);
             nameStr = "[" + nameStr + "]";
             nameLength += 2;
         }
         
         if (item == getSelected() || item == selected) {
-            String format = ANSI_RED;
+            String format = ColoredString.RED;
             if (item == secondarySelected) {
-                format = ANSI_GREEN;
+                format = ColoredString.GREEN;
             }
-            nameStr += format + "*" + ANSI_RESET;
-            nameStr = format + "*" + ANSI_RESET + nameStr;
+            nameStr += format + "*" + ColoredString.ANSI_RESET;
+            nameStr = format + "*" + ColoredString.ANSI_RESET + nameStr;
             nameLength += 2;
         }
         
@@ -1198,7 +1173,7 @@ public class Main {
             nameLength += " -- ".length();
             String timeStr = PeriodFormat.getDefault().print(item.getTime());
             nameLength += timeStr.length();
-            timeStr = Filter.ANSI_CYAN_BACKGROUND + timeStr + Filter.ANSI_RESET;
+            timeStr = ColoredString.CYAN_BACKGROUND + timeStr + ColoredString.ANSI_RESET;
             nameStr += timeStr;
             
         }
@@ -1608,4 +1583,17 @@ public class Main {
         if (a.getPriority() == b.getPriority()) return 0;
         return 1;
     }
+    
+    /*
+    
+    formatting: 
+    
+    green, yellow, blue, gray STATUS
+    black brackets []
+    
+    red stars for selected
+    green stars for secondary selected
+    
+    purple highlight for search result
+    */
 }

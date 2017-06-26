@@ -1,5 +1,7 @@
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Stack;
 
 
 
@@ -13,68 +15,132 @@ import java.util.ArrayList;
  *
  * @author Dmitry
  */
+
+/* request: clearColors
+    -- useCase: 
+*/
 public class ColoredString {
     
+    public static final String BLACK_BACKGROUND = "\u001B[40m";
+    public static final String RED_BACKGROUND = "\u001B[41m";
+    public static final String GREEN_BACKGROUND = "\u001B[42m";
+    public static final String YELLOW_BACKGROUND = "\u001B[43m";
+    public static final String BLUE_BACKGROUND = "\u001B[44m";
+    public static final String PURPLE_BACKGROUND = "\u001B[45m";
+    public static final String CYAN_BACKGROUND = "\u001B[46m";
+    public static final String WHITE_BACKGROUND = "\u001B[47m";
+    
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String BLACK = "\u001B[30m";
+    public static final String RED = "\u001B[31m";
+    public static final String GREEN = "\u001B[32m";
+    public static final String YELLOW = "\u001B[33m";
+    public static final String BLUE = "\u001B[34m";
+    public static final String PURPLE = "\u001B[35m";
+    public static final String CYAN = "\u001B[36m";
+    public static final String WHITE = "\u001B[37m";
+    
+    
+    
     private final String ORIGINAL;
-    private ArrayList<String> parts;
+    
+    HashMap<Integer, ArrayList<String>> startIndices;
+    HashMap<Integer, ArrayList<String>> endIndices;
+    
+    
+    // start same: ignore until last, but push from beginning to end
+    // end same: pop from beginning to end
     
     /**
      * @param original an uncolored string.
      */
     public ColoredString(String original) {
         this.ORIGINAL = original;
-        this.parts = new ArrayList();
-        this.parts.add(this.ORIGINAL);
+        this.startIndices = new HashMap();
+        this.endIndices = new HashMap();
     }
     
-    public void colorSubstring2(String color1, String color2, int startIdx, int length) {
-        /*
-        int idx = 0;
-        for (int i = 0; i < parts.size() && idx < startIdx + length; i ++) {
-            for (int j = 0; j < parts.get(i).length() && idx < startIdx + length; j ++) {
-                System.out.println(i + " " + j + " " + idx);
-                idx ++;
-            }
-        }*/
-        this.splitAtIdx(startIdx + length - 1);
-    }
+    /*
+    issues:
+        if end index is larger than the string then don't need to store it
+    */
     
-    private void splitAtIdx(int target) {
-        int idx = 0;
-        int i = 0;
-        int j = 0;
-        for (i = 0; i < parts.size() && idx < target; i ++) {
-            for (j = 0; j < parts.get(i).length() && idx < target; j ++) {
-                System.out.println(i + " " + j + " " + idx);
-                idx ++;
-            }
+    public void applyColor(String color, int start, int length) {
+        if (!startIndices.containsKey(start)) {
+            startIndices.put(start, new ArrayList());
         }
-        System.out.println("end: " + i + " " + j + " " + idx);
-    }
-    
-    public static String colorString(String str, String color) {
-        return colorString(str, color, "");
-    }
-    public static String colorString(String str, String color1, String color2) {
-        return colorSubstring(str, color1, color2, 0);
-    }
-    public static String colorSubstring(String str, String color, int startIdx) {
-        return colorSubstring(str, color, "", startIdx);
-    }
-    public static String colorSubstring(String str, String color1, String color2, int startIdx) {
-        return colorSubstring(str, color1, color2, startIdx, str.length() - startIdx); 
-    }
-    public static String colorSubstring(String str, String color, int startIdx, int length) {
-        return colorSubstring(str, color, "", startIdx, length);
-    }
-    public static String colorSubstring(String str, String color1, String color2, int startIdx, int length) {
+        startIndices.get(start).add(color);
         
-        //return str.substring(0, startIdx) + color1 + color2 + str.substring(startIdx, startIdx + length) + ANSI_RESET + str.substring(startIdx + length, str.length());
-        return null;
+        int end = start + length;
+        if (!endIndices.containsKey(end)) {
+            endIndices.put(end, new ArrayList());
+        }
+        endIndices.get(end).add(color);
     }
     
+    
+    /* 
+    issues: 
+        if (0: [red, orange]) but orange is longer than red, then ending red is actually unecessary (but is done anyways)
+            -- solution: make a local copy of startIndex, treat the array as a stack, and then perform the same deletion logic to this stack as
+            -- to the real 'colorsInEffect' stack
+        if the same color has two ending indices (overlap and no), then after the first is removed, need to check if colorsInEffect.isEmpty())
+            -- solution: ???
+        applying characters from the original string one at a time (inefficient)
+            -- solution: only apply characters when ending/starting
+    */
     @Override
     public String toString() {
-        return null;
+        Stack<String> activeColors = new Stack();
+        
+        String coloredString = "";
+        
+        for (int i = 0; i < this.ORIGINAL.length(); i ++) {
+            if (this.endIndices.containsKey(i) && !activeColors.isEmpty()) {
+                // remove overlapping endpoints in order of applied color to avoid multiple ANSI_RESET
+                for (String colorToEnd: this.endIndices.get(i)) {
+                    if (!activeColors.isEmpty()) {
+                        boolean removed = false;
+                        if (activeColors.peek().equals(colorToEnd)) {
+                            coloredString += ANSI_RESET;
+                            activeColors.pop();
+                            removed = true;
+                            if (!activeColors.isEmpty()) {
+                                coloredString += activeColors.peek();
+                            }
+                        }
+                        if (!removed) {
+                            for (String colorToRemove: activeColors) {
+                                if (colorToRemove.equals(colorToEnd)) {
+                                    activeColors.remove(colorToRemove);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (this.startIndices.containsKey(i)) {
+                int j = 0;
+                if (!activeColors.isEmpty()) {
+                    coloredString += ANSI_RESET;
+                }
+                for (String colorToStart: this.startIndices.get(i)) {
+                    activeColors.push(colorToStart);
+                    if (j == this.startIndices.get(i).size() - 1) {
+                        coloredString += colorToStart;
+                    }
+                    j ++;
+                }
+            }
+            coloredString += this.ORIGINAL.charAt(i);
+        }
+        
+        if (!activeColors.isEmpty()) {
+            coloredString += ANSI_RESET;
+        }
+        
+        return coloredString;
     }
 }
