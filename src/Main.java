@@ -36,29 +36,29 @@ import org.joda.time.format.PeriodFormat;
  */
 public class Main {
     
-    final String DATA_PATH = "./data-test/";
-    final String CONFIG_PATH = "./config/";
-    final String META_PATH = "_meta/";
+    final static String DATA_PATH = "./data-test/";
+    final static String CONFIG_PATH = "./config/";
+    final static String META_PATH = "_meta/";
     
-    ArrayList<Item> heads = new ArrayList();
-    ArrayList<Task> tasks = new ArrayList();
-    Item selected = null;
-    Item secondarySelected = null;
-    boolean secondarySelection = false;
-    boolean isPriority = false;
-    boolean timeMode = false;
-    int originalPriorityIndex = 0;
-    int numRunning = 0;
+    static ArrayList<Item> heads = new ArrayList();
+    static ArrayList<Task> tasks = new ArrayList();
+    static Item selected = null;
+    static Item secondarySelected = null;
+    static boolean secondarySelection = false;
+    static boolean isPriority = false;
+    static boolean timeMode = false;
+    static int originalPriorityIndex = 0;
+    static int numRunning = 0;
     
-    String searchStr = "";
-    HashMap<Item, Integer> searchResults = new HashMap();
+    static String searchStr = "";
+    static HashMap<Item, Integer> searchResults = new HashMap();
     
-    int currentWeek = 0;
-    int viewWeek = 0;
+    static int currentWeek = 0;
+    static int viewWeek = 0;
     
     public static void main(String[] args) {
         Main main = new Main();
-        main.runO();
+        main.run();
     }
     
     public void runO() {
@@ -76,7 +76,7 @@ public class Main {
         Scanner in = new Scanner(System.in);
         do {
             System.out.println();
-            printAll();
+            Display.printTrees(heads);
             System.out.print(">> ");
             Integer target = null;
             
@@ -277,7 +277,7 @@ public class Main {
         }
     }
     
-    public void loadTasks() {
+    public static void loadTasks() {
         tasks.clear();
         File timeFolder = new File(getWeekPrepath(viewWeek) + "_tasks/");
         if (!timeFolder.exists()) {
@@ -776,7 +776,7 @@ public class Main {
         printWeek(true);
     }
     
-    public String getWeekPrepath(int weekNum) {
+    public static String getWeekPrepath(int weekNum) {
         return DATA_PATH + "week" + weekNum + "/";
     }
     
@@ -1103,21 +1103,7 @@ public class Main {
         }
     }
     
-    public void printAll() {
-        int count = 0;
-        for (Item head: heads) {
-            printStructure(head, count ++, 0);
-            System.out.println("");
-        }
-        if (timeMode) {
-            printTaskTimes();
-        }
-        if (!heads.isEmpty()) {
-            System.out.println();
-        }
-    }
-    
-    public void printTaskTimes() {
+    public static void printTaskTimes() {
         loadTasks();
         for (Task task: tasks) {
             if (task.isInProgress()) {
@@ -1128,68 +1114,6 @@ public class Main {
             if (task.getTime() != null) {
                 System.out.println(" -- " + ColoredString.CYAN_BACKGROUND + PeriodFormat.getDefault().print(task.getTime()) + ColoredString.ANSI_RESET);
             }
-        }
-    }
-    
-    public void printStructure(Item item, int count, int offset) {
-        if (count > 0) {
-            System.out.println(); // end current line
-            // extra space
-            //System.out.println();
-        }
-        if (offset != 0 && count != 0) {
-            System.out.print(String.format("%" + offset + "s", ""));
-        }
-        
-        String nameStr = item.getName();
-        int nameLength = nameStr.length();
-        
-        if (searchResults.containsKey(item)) {
-            /*
-            nameStr = Filter.applyFilters(item, nameStr.substring(0, searchResults.get(item))) +
-                    ColoredString.PURPLE + nameStr.substring(searchResults.get(item), searchResults.get(item) + searchStr.length()) + ColoredString.ANSI_RESET + 
-                    Filter.applyFilters(item, nameStr.substring(searchResults.get(item) + searchStr.length()));
-*/
-            nameStr = ColoredString.PURPLE + "[" + ColoredString.ANSI_RESET + nameStr + ColoredString.PURPLE + "]" + ColoredString.ANSI_RESET;
-            nameLength += 2;
-        } else {
-            //nameStr = Filter.applyFilters(item, nameStr);
-            nameStr = "[" + nameStr + "]";
-            nameLength += 2;
-        }
-        
-        if (item == getSelected() || item == selected) {
-            String format = ColoredString.RED;
-            if (item == secondarySelected) {
-                format = ColoredString.GREEN;
-            }
-            nameStr += format + "*" + ColoredString.ANSI_RESET;
-            nameStr = format + "*" + ColoredString.ANSI_RESET + nameStr;
-            nameLength += 2;
-        }
-        
-        if (timeMode && item.getTime() != null) {
-            nameStr += " -- ";
-            nameLength += " -- ".length();
-            String timeStr = PeriodFormat.getDefault().print(item.getTime());
-            nameLength += timeStr.length();
-            timeStr = ColoredString.CYAN_BACKGROUND + timeStr + ColoredString.ANSI_RESET;
-            nameStr += timeStr;
-            
-        }
-        
-        String pre = count + ". ";
-        
-        String post = "";
-        if (!item.isLeaf()) {
-            post = " --> ";
-        }
-
-        System.out.print(pre + nameStr + post);
-        
-        count = 0;
-        for (Item child: item.getChildren()) {
-            printStructure(child, count ++, offset + pre.length() + nameLength + post.length());
         }
     }
     
@@ -1440,7 +1364,7 @@ public class Main {
         return selected.getPath(getWeekPrepath(viewWeek));
     }
     
-    public Item getSelected() {
+    public static Item getSelected() {
         if (secondarySelection) return secondarySelected;
         return selected;
     }
@@ -1582,6 +1506,21 @@ public class Main {
         if (a.getPriority() < b.getPriority()) return -1;
         if (a.getPriority() == b.getPriority()) return 0;
         return 1;
+    }
+    
+    public static String getStatusColor(Meta.Status status) {
+        switch (status) {
+            case WORKING:
+                return ColoredString.GREEN;
+            case TODO:
+                return ColoredString.BLUE;
+            case NONE:
+                return ColoredString.YELLOW;
+            case DONE:
+                return ColoredString.WHITE;
+            default:
+                return "";
+        }
     }
     
     /*

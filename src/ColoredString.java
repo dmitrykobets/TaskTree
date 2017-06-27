@@ -40,12 +40,10 @@ public class ColoredString {
     public static final String CYAN = "\u001B[36m";
     public static final String WHITE = "\u001B[37m";
     
-    
-    
     private final String ORIGINAL;
     
-    HashMap<Integer, ArrayList<String>> startIndices;
-    HashMap<Integer, ArrayList<String>> endIndices;
+    private HashMap<Integer, ArrayList<String>> startIndices;
+    private HashMap<Integer, ArrayList<String>> endIndices;
     
     
     // start same: ignore until last, but push from beginning to end
@@ -60,6 +58,22 @@ public class ColoredString {
         this.endIndices = new HashMap();
     }
     
+    private ColoredString(String original, HashMap<Integer, ArrayList<String>> startIndices, HashMap<Integer, ArrayList<String>> endIndices) {
+        this.ORIGINAL = original;
+        this.startIndices = startIndices;
+        this.endIndices = endIndices;
+    }
+    
+    public ColoredString(String original, String color) {
+        this(original);
+        this.applyColor(color);
+    }
+    
+    public ColoredString(String original, String color, int start, int end) {
+        this(original);
+        this.applyColor(color, start, end);
+    }
+    
     /*
     issues:
         if end index is larger than the string then don't need to store it
@@ -72,12 +86,16 @@ public class ColoredString {
         startIndices.get(start).add(color);
         
         int end = start + length;
+        if (end > this.ORIGINAL.length()) end = this.ORIGINAL.length();
         if (!endIndices.containsKey(end)) {
             endIndices.put(end, new ArrayList());
         }
         endIndices.get(end).add(color);
     }
     
+    public void applyColor(String color) {
+        this.applyColor(color, 0, this.ORIGINAL.length());
+    }
     
     /* 
     issues: 
@@ -142,5 +160,37 @@ public class ColoredString {
         }
         
         return coloredString;
+    }
+    
+    public ColoredString append(String str) {
+        return this.append(new ColoredString(str));
+    }
+    public ColoredString prepend(String str) {
+        return this.prepend(new ColoredString(str));
+    }
+    
+    public ColoredString append(ColoredString other) {
+        return other.prepend(this);
+    }
+    
+    public ColoredString prepend(ColoredString other) {
+        
+        String newOriginal = other.ORIGINAL + this.ORIGINAL;
+        
+        HashMap<Integer, ArrayList<String>> newStartIndices = new HashMap(other.startIndices);
+        for (Integer i: this.startIndices.keySet()) {
+            newStartIndices.put(i + other.length(), this.startIndices.get(i));
+        }
+        
+        HashMap<Integer, ArrayList<String>> newEndIndices = new HashMap(other.endIndices);
+        for (Integer i: this.endIndices.keySet()) {
+            newEndIndices.put(i + other.length(), this.endIndices.get(i));
+        }
+        
+        return new ColoredString(newOriginal, newStartIndices, newEndIndices);
+    }
+    
+    public int length() {
+        return this.ORIGINAL.length();
     }
 }
