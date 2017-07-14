@@ -41,7 +41,6 @@ public class Main {
     final static String META_PATH = "_meta/";
     
     static ArrayList<Item> heads = new ArrayList();
-    static ArrayList<Task> tasks = new ArrayList();
     static Item selected = null;
     static Item secondarySelected = null;
     static boolean secondarySelection = false;
@@ -165,14 +164,6 @@ public class Main {
                     togglePriorityMode();
                 } else if (toks[0].equals("time")) {
                     toggleTimeMode();
-                } else if (toks[0].equals("start")) {
-                    promptTimeTask(true);
-                } else if (toks[0].equals("stop")) {
-                    promptTimeTask(false);
-                } else if (toks[0].equals("tasks")) {
-                    loadTasks();
-                    printTasks();
-                    waitForInput();
                 }
             } else if (toks.length == 2) {
                 if ((toks[0].equals("vw")) && !secondarySelection) {
@@ -196,124 +187,6 @@ public class Main {
                 }
             }
         } while (true);
-    }
-    
-    public void printTasks() {
-        System.out.print("Existing tasks: [");
-        
-        int i = 0;
-        for (Task task: tasks) {
-            if (task.isInProgress()) {
-                System.out.print(ColoredString.BLUE + task.getName() + ColoredString.ANSI_RESET);
-            } else {
-                System.out.print(task.getName());
-            }
-            if (i ++ < tasks.size() - 1) {
-                System.out.print(", ");
-            }
-        }
-        System.out.println("]");
-    }
-    
-    public void promptTimeTask(boolean start) {
-        loadTasks();
-        printTasks();
-        
-        Scanner in = new Scanner(System.in);
-        System.out.print("Name:\n>> ");
-        String name = in.nextLine();
-        Task correspondingTask = tasks.stream().filter(t -> t.getName().equals(name)).findFirst().orElse(null);
-        if (correspondingTask == null && !start) return; // can't stop a non-existent task
-        if (correspondingTask != null && !correspondingTask.isInProgress() && !start) return; // can't stop an already stopped task
-        if (correspondingTask != null && correspondingTask.isInProgress() && start) return; // can't start an already started task
-        
-        File timeFile = new File(getWeekPrepath(viewWeek) + "_tasks/" + name + ".txt");
-        boolean isNewFile = !timeFile.exists();
-        if (!timeFile.exists()) {
-            try {
-                timeFile.createNewFile();
-            } catch (IOException ex) {
-                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        ArrayList<String> lines = new ArrayList();
-        try (BufferedReader br = new BufferedReader(new FileReader(timeFile))) {
-            String line = "";
-            while ((line = br.readLine()) != null) {
-                lines.add(line);
-            }
-            DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
-            
-            DateTime now = formatter.parseDateTime(new DateTime().toString(formatter));
-            PrintWriter writer = null;
-            if (start && (lines.isEmpty() || lines.get(lines.size() - 1).startsWith("e:"))) {
-                writer = new PrintWriter(new FileOutputStream(timeFile, true));
-                writer.println(("s:") + formatter.print(now));
-            } else if (!start && !lines.isEmpty() && lines.get(lines.size() - 1).startsWith("s:")) {
-                DateTime lastTime = formatter.parseDateTime(lines.get(lines.size() - 1).substring(2));
-                if (lastTime.isEqual(now)) {
-                    writer = new PrintWriter(new FileWriter(timeFile));
-                    lines.remove(lines.size() - 1);
-                    for (String str: lines) {
-                        writer.println(str);
-                    }
-                } else {
-                    writer = new PrintWriter(new FileOutputStream(timeFile, true));
-                    writer.println(("e:") + formatter.print(now));
-                }
-            }
-            if (writer != null) {
-                writer.close();
-            } 
-            
-        } catch (Exception e) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
-        }
-        
-        if (lines.isEmpty() && !isNewFile) {
-            System.out.println("deleting: " + timeFile.getAbsolutePath());
-            waitForInput();
-            timeFile.delete();
-        }
-    }
-    
-    public static void loadTasks() {
-        tasks.clear();
-        File timeFolder = new File(getWeekPrepath(viewWeek) + "_tasks/");
-        if (!timeFolder.exists()) {
-            timeFolder.mkdir();
-            return;
-        }
-        
-        
-        File[] files = timeFolder.listFiles();
-        for (File file: files) {
-            String name = file.getName().substring(0, file.getName().length() - ".txt".length());
-            
-            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-                String line;
-                boolean inProgress = false;
-                String startStr = "";
-                Period duration = null;
-                DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
-                while ((line = br.readLine()) != null) {
-                    if (line.startsWith("s:")) {
-                        inProgress = true;
-                        startStr = line.substring(2);
-                    } else {
-                        inProgress = false;
-                        DateTime start = formatter.parseDateTime(startStr);
-                        DateTime end = formatter.parseDateTime(line.substring(2));
-                        if (duration == null) duration = new Period(start, end);
-                        else duration = duration.plus(new Period(start, end));
-                    }
-                }
-                tasks.add(new Task(name, duration, inProgress));
-                
-            } catch (Exception e) {
-                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
-            }
-        }
     }
     
     public void toggleTimeMode() {
@@ -1103,20 +976,6 @@ public class Main {
         }
     }
     
-    public static void printTaskTimes() {
-        loadTasks();
-        for (Task task: tasks) {
-            if (task.isInProgress()) {
-                System.out.print(ColoredString.BLUE + task.getName() + ColoredString.ANSI_RESET);
-            } else {
-                System.out.print(task.getName());
-            }
-            if (task.getTime() != null) {
-                System.out.println(" -- " + ColoredString.CYAN_BACKGROUND + PeriodFormat.getDefault().print(task.getTime()) + ColoredString.ANSI_RESET);
-            }
-        }
-    }
-    
     public Meta loadMeta(File metaFolder) {
         Meta meta = new Meta();
 
@@ -1195,7 +1054,7 @@ public class Main {
         File[] contents = folder.listFiles();
         
         for (File content: contents) {
-            if (!content.isFile() && !content.getName().equals("_tasks")) {
+            if (!content.isFile()) {
                 Item newItem = parseItem(content, week);
                 if (newItem == null) {
                     return;
