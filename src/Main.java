@@ -1,28 +1,12 @@
-
-import java.awt.Desktop;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import javax.swing.JOptionPane;
-import org.joda.time.DateTime;
-import org.joda.time.Period;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.PeriodFormat;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -35,11 +19,6 @@ import org.joda.time.format.PeriodFormat;
  * @author Dmitry
  */
 public class Main {
-    
-    final static String DATA_PATH = "./data-test/";
-    final static String CONFIG_PATH = "./config/";
-    final static String META_PATH = "_meta/";
-    
     static ArrayList<Item> heads = new ArrayList();
     static Item selected = null;
     static Item secondarySelected = null;
@@ -202,38 +181,6 @@ public class Main {
             parseTime(head);
         }
     }
-    public void parseTime(Item item) {
-        if (item.isLeaf()) {
-            File timeFile = new File(item.getPath(getWeekPrepath(currentWeek)) + META_PATH + "time.txt");
-            if (!timeFile.exists()) {
-                item.setTime(null);
-            } else {
-                try (BufferedReader br = new BufferedReader(new FileReader(timeFile))) {
-                    String line;
-                    String startStr = "";
-                    Period duration = null;
-                    DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm");
-                    while ((line = br.readLine()) != null) {
-                        if (line.startsWith("s:")) {
-                            startStr = line.substring(2);
-                        } else {
-                            DateTime start = formatter.parseDateTime(startStr);
-                            DateTime end = formatter.parseDateTime(line.substring(2));
-                            if (duration == null) duration = new Period(start, end);
-                            else duration = duration.plus(new Period(start, end));
-                        }
-                    }
-                    item.setTime(duration);
-                } catch (Exception e) {
-                    Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, e);
-                }
-            }
-        } else {
-            for (Item child: item.getChildren()) {
-                parseTime(child);
-            }
-        }
-    }
     
     public void togglePriorityMode() {
         if (selected == null || secondarySelection || currentWeek != viewWeek) return;
@@ -251,7 +198,7 @@ public class Main {
     
     public void writePriorities() {
         for (Item item: selected.isHead() ? heads : selected.getParent().getChildren()) {
-            writeMeta(item.getPath(getWeekPrepath(currentWeek)), item.getMeta(), false);
+            writeMeta(item, false);
         }
     }
     
@@ -649,10 +596,6 @@ public class Main {
         printWeek(true);
     }
     
-    public static String getWeekPrepath(int weekNum) {
-        return DATA_PATH + "week" + weekNum + "/";
-    }
-    
     public void changeViewWeek(Scanner in) {
         Integer parseWeek = null;
         while (parseWeek == null) {
@@ -694,9 +637,6 @@ public class Main {
         deleteLeafFolder(item.getPath(getWeekPrepath(currentWeek)));
     }
     
-    /*
-        Deletes any item (not just selected)
-    */
     public void deleteItem(Item item) {
         
         // select new item
@@ -1012,7 +952,8 @@ public class Main {
         return meta;
     }
     
-    public void writeMeta(String path, Meta meta, boolean suppressWarning) {
+    public void writeMeta(Item item, boolean suppressWarning) {
+        Meta meta = item.getMeta();
         try {
             File metaFolder = new File(path + META_PATH);
             if (!metaFolder.exists()) {
@@ -1367,20 +1308,7 @@ public class Main {
         return 1;
     }
     
-    public static String getStatusColor(Meta.Status status) {
-        switch (status) {
-            case WORKING:
-                return ColoredString.GREEN;
-            case TODO:
-                return ColoredString.BLUE;
-            case NONE:
-                return ColoredString.YELLOW;
-            case DONE:
-                return ColoredString.WHITE;
-            default:
-                return "";
-        }
-    }
+}
     
     /*
     
@@ -1393,5 +1321,4 @@ public class Main {
     green stars for secondary selected
     
     purple highlight for search result
-    */
 }

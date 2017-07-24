@@ -19,15 +19,11 @@ add option for appending to beginning and end of original string (+=)
  * @author Dmitry
  */
 public class Display {
-
     public static void printTrees(ArrayList<Item> heads) {
         int count = 0;
         for (Item head: heads) {
             printTree(head, count ++, 0);
             System.out.println("");
-        }
-        if (Main.timeMode) {
-            Main.printTaskTimes();
         }
         if (!heads.isEmpty()) {
             System.out.println();
@@ -39,7 +35,7 @@ public class Display {
             System.out.print(String.format("%" + offset + "s", ""));
         }
         
-        ColoredString nameStr = new ColoredString(head.getName(), Main.getStatusColor(head.getStatus()));
+        ColoredString nameStr = new ColoredString(head.getName(), getStatusColor(head.getStatus()));
         
         if (Main.searchResults.containsKey(head)) {
             nameStr.applyColor(ColoredString.PURPLE, Main.searchResults.get(head), Main.searchStr.length());
@@ -79,6 +75,21 @@ public class Display {
             for (Item child: head.getChildren()) {
                 printTree(child, count ++, offset + pre.length() + nameStr.length() + post.length());
             }
+        }
+    }
+    
+    private static String getStatusColor(Meta.Status status) {
+        switch (status) {
+            case WORKING:
+                return ColoredString.GREEN;
+            case TODO:
+                return ColoredString.BLUE;
+            case NONE:
+                return ColoredString.YELLOW;
+            case DONE:
+                return ColoredString.WHITE;
+            default:
+                return "";
         }
     }
 }
